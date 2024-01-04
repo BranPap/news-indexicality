@@ -15,5 +15,7 @@ function record_response(data, ChoiceArray) {
         data.result = data.ChoiceArray[0]
     } else if (data.response == "1") {
         data.result = data.ChoiceArray[1]
+    } else if (data.response == "2") {
+        data.result = data.ChoiceArray[2]
     }
 }
