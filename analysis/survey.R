@@ -1,3 +1,12 @@
+# This helper function is meant to allow for the extraction of the JSPsych survey results, which embed themselves as a dictionary in the "response" column of the trial that includes the survey.
+# This code is maintained by Brandon Papineau (branpap@stanford.edu) and Yin Lin Tan (yltan@stanford.edu), adapted from code originally written by Yin Lin
+
+
+#INSTRUCTIONS: call the function, and place the dataframe as the first argument. 
+# The second argument is the unique identifier such as 'workerid' that the function uses to match survey information to the correct worker
+# The final argument is the name of the column that contains the data to be extracted. Unless you change it, this should be "response"
+
+
 extract_demographics <- function(df,identifier,response) {
   
   newDF <- df %>% 
@@ -45,7 +54,6 @@ extract_demographics <- function(df,identifier,response) {
   
   # merge the new internal dataset to the existing one
   returnDF <- merge(df,questionnaire,by="workerid")
-  
   
   return(returnDF)
 }
