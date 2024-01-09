@@ -84,15 +84,15 @@ const trials = {
     ],
     timeline_variables: [
         {stimulus: CriticalTerm + ' places first in '+GenderMod+' trivia championship<br><br>', data: {category: "critical", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Orange tabby cat named Taters steals the show in first video sent by laser from deep space<br><br>', data: {category: "AP", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Extremely rare white alligator at a Florida reptile park<br><br>', data: {category: "AP", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Penguin parents sleep for just a few seconds at a time to guard newborns, study shows<br><br>', data: {category: "AP", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Taylor Swift busted as woke hypocrite on 5 activist issues: Climate, LGBTQQIAAP2S+, feminism<br><br>', data: {category: "BB", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Elon Musk’s ‘Grok’ AI is just as woke as other chatbots<br><br>', data: {category: "BB", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Sofia Coppola plays victim: ‘I’m fighting for a tiny fraction’ of male directors’ budgets<br><br>', data: {category: "BB", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Sofia Coppola gets real on `fighting for a tiny fraction’ of what male directors get<br><br>', data: {category: "PN", ChoiceArray: ChoiceArray}}, 
-        {stimulus: 'Elon Musk unveils `Grok’ AI chatbot as alternative to `woke’ rivals like ChatGPT<br><br>', data: {category: "PN", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Megyn Kelly calls for boycott of Taylor Swift after singer attends Gaza relief comedy show<br><br>', data: {category: "PN", ChoiceArray: ChoiceArray}}
+        {stimulus: 'Orange tabby cat named Taters steals the show in first video sent by laser from deep space<br><br>', data: {category: "Neutral", ChoiceArray: ChoiceArray}},
+        {stimulus: 'Extremely rare white alligator at a Florida reptile park<br><br>', data: {category: "Neutral", ChoiceArray: ChoiceArray}},
+        {stimulus: 'Penguin parents sleep for just a few seconds at a time to guard newborns, study shows<br><br>', data: {category: "Neutral", ChoiceArray: ChoiceArray}},
+        {stimulus: 'Taylor Swift busted as woke hypocrite on 5 activist issues: Climate, LGBTQQIAAP2S+, feminism<br><br>', data: {category: "Right", ChoiceArray: ChoiceArray}},
+        {stimulus: 'Elon Musk’s ‘Grok’ AI is just as woke as other chatbots<br><br>', data: {category: "Right", ChoiceArray: ChoiceArray}},
+        {stimulus: 'Sofia Coppola plays victim: ‘I’m fighting for a tiny fraction’ of male directors’ budgets<br><br>', data: {category: "Right", ChoiceArray: ChoiceArray}},
+        {stimulus: 'Sofia Coppola gets real on `fighting for a tiny fraction’ of what male directors get<br><br>', data: {category: "Left", ChoiceArray: ChoiceArray}}, 
+        {stimulus: 'Elon Musk unveils `Grok’ AI chatbot as alternative to `woke’ rivals like ChatGPT<br><br>', data: {category: "Left", ChoiceArray: ChoiceArray}},
+        {stimulus: 'Megyn Kelly calls for boycott of Taylor Swift after singer attends Gaza relief comedy show<br><br>', data: {category: "Left", ChoiceArray: ChoiceArray}}
     ],
     randomize_order: true
 }

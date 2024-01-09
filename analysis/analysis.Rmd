@@ -5,14 +5,118 @@ output: html_notebook
 
 ```{r}
 library(tidyverse)
+library(jsonlite)
+library(stringr)
+
+source("demographics.R")
 ```
 
 
 ```{r}
-data <- read_csv("news_indexicality_test-merged.csv")
+data <- read_csv("news_indexicality_test-merged-2.csv")
 ```
 
 ```{r}
-data 
+demographic <- data %>% 
+  filter(trial_type == "survey")
 ```
+
+```{r}
+demographic2 <- demographic %>%
+  mutate(response = lapply(strsplit(as.character(response), ","), function(x) {
+    eval(parse(text = paste0("{", x, "}")))
+  }))
+```
+
+```{r}
+demographic$response <- gsub("None", "\'null\'", demographic$response)
+```
+
+
+
+```{r}
+x <- demographic$response
+```
+
+
+```{r}
+x<-gsub("\\{","",x)
+x<-gsub("\\}","",x)
+
+# remove single quotes from "response" column
+x<-gsub("'","",x)
+```
+
+
+# select relevant columns
+raw_data = raw_data[c("workerid","response")]
+raw_data <- subset(raw_data, !is.na(response) & response != "")
+colnames(raw_data)[1] = "id" # rename column
+
+# remove curly braces from "response" column
+raw_data$response<-gsub("\\{","",raw_data$response)
+raw_data$response<-gsub("\\}","",raw_data$response)
+
+# remove single quotes from "response" column
+raw_data$response<-gsub("'","",raw_data$response)
+
+# Remove square brackets from data
+raw_data$response<-gsub("\\[","",raw_data$response)
+raw_data$response<-gsub("\\]","",raw_data$response)
+
+# create new data frame
+questionnaire <- data.frame()
+
+# splitting the response column
+for (i in 1:nrow(raw_data)) {
+  response_split <- strsplit(raw_data$response[i], ",")
+  for (j in 1:length(response_split[[1]])) {
+    questionnaire <- rbind(questionnaire, 
+                           data.frame(id = raw_data$id[i], 
+                                      response = response_split[[1]][j]))
+  }
+}
+
+
+
+```{r}
+x
+```
+
+
+```{r}
+source("demographics.R")
+test_data<- extract_demographics(data,"workerid","response")
+
+test_data
+```
+
+
+merge(data,test_data,by="workerid")
+
+
+
+```{r}
+merge(data,test_data,by="workerid")
+```
+
+
+# splitting the response column
+  for (i in 1:nrow(newDF)) {
+    response_split <- strsplit(newDF$response[i], ",")
+    for (j in 1:length(response_split[[1]])) {
+      questionnaire <- rbind(questionnaire, 
+                             data.frame(workerid = newDF$workerid[i], 
+                                        response = response_split[[1]][j]))
+    }
+  }
+  
+  # remove leading spaces in the "response" column
+  questionnaire$response <- trimws(questionnaire$response)
+  
+  # split data in "response" column into two based on colon
+  questionnaire <- separate(questionnaire, response, into = c("factor", "value"), sep =": ")
+  
+  # pivot data to long format
+  # questionnaire <- pivot_wider(questionnaire,names_from = factor,values_from = value)
 
