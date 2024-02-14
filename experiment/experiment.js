@@ -4,8 +4,8 @@ const jsPsych = initJsPsych({
     show_progress_bar: true,
     auto_update_progress_bar: false,
     on_finish: function(data) {
-        // proliferate.submit({"trials": data.values()});
-        jsPsych.data.displayData('csv');
+        proliferate.submit({"trials": data.values()});
+        // jsPsych.data.displayData('csv');
     }
 });
 
