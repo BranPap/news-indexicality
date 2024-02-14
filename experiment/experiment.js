@@ -31,7 +31,7 @@ timeline.push(irb)
 
 const instructions = {
     type: jsPsychHtmlKeyboardResponse,
-    stimulus: "In this experiment, you will read a series of short headlines from American news sources. You will then be asked to indicate whether you believe the headlines come from a politically left-leaning publication (CNN), a politically right-leaning publication (Fox), or a moderate publication (NPR). Please try and answer as honestly as possible; if you are unsure about the political leaning of the publication, that is okay. Pick the description that you find <em>most appropriate</em>.<br><br>When you're ready to begin, press the space bar.<br><br><strong>Content Warning: This experiment contains discussions some participants may find distressing. These include, but are not limited to: natural disasters, violence and death, and discrimination. You may close the window at any time.",
+    stimulus: "In this experiment, you will read a series of short headlines from American news sources. You will then be asked to indicate whether you believe the headlines come from a politically left-leaning publication (CNN), a politically right-leaning publication (Fox), or a moderate publication (NPR). Please try and answer as honestly as possible; if you are unsure about the political leaning of the publication, that is okay. Pick the source that you find <em>most appropriate</em>.<br><br>When you're ready to begin, press the space bar.<br><br><strong>Content Warning: This experiment contains discussions some participants may find distressing. These include, but are not limited to: natural disasters, violence and death, and discrimination. You may close the window at any time.",
     choices: [" "],
     on_finish: function(data) {
         data.category = "instructions"
