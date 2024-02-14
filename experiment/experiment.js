@@ -1,40 +1,15 @@
-// Preliminary Functions //
-
-// Define Function Using the Fisher-Yates (Knuth) Shuffle Algorithm to randomize stimulus selection //
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
-    }
-  }
-
-// Defining the critical item options //
-
-const GenderOption =["m","f"]
-shuffleArray(GenderOption)
-
-const GenderSelection = GenderOption.pop()
-
-if (GenderSelection == "f") {
-    var CriticalTermOptions = ["Transgender woman", "Trans woman", "Biological male"]
-    var GenderMod = "women's"
-} else if (GenderSelection == "m") {
-    var CriticalTermOptions = ["Transgender man", "Trans man", "Biological female"]
-    var GenderMod = "men's"
-}
-
-shuffleArray(CriticalTermOptions) // Shuffle the items
-const CriticalTerm = CriticalTermOptions.pop() // Select the variable
+// Preliminary Calls //
 
 const jsPsych = initJsPsych({
+    show_progress_bar: true,
+    auto_update_progress_bar: false,
     on_finish: function(data) {
-        proliferate.submit({"trials": data.values()});
+        // proliferate.submit({"trials": data.values()});
+        jsPsych.data.displayData('csv');
     }
 });
 
 let timeline = [];
-// push experiment logic the timeline here...
-// ......
 
 // IRB FORM //
 
@@ -56,7 +31,7 @@ timeline.push(irb)
 
 const instructions = {
     type: jsPsychHtmlKeyboardResponse,
-    stimulus: "In this experiment, you will read a series of short headlines from American news sources. You will then be asked to indicate whether you believe the headlines come from a politically left-leaning publication, a politically right-leaning publication, or a politically neutral or apolitical news source. Please try and answer as honestly as possible; if you are unsure about the political leaning of the publication, that is okay. Pick the description that you find <em>most appropriate</em>.<br><br>When you're ready to begin, press the space bar.",
+    stimulus: "In this experiment, you will read a series of short headlines from American news sources. You will then be asked to indicate whether you believe the headlines come from a politically left-leaning publication (CNN), a politically right-leaning publication (Fox), or a moderate publication (NPR). Please try and answer as honestly as possible; if you are unsure about the political leaning of the publication, that is okay. Pick the description that you find <em>most appropriate</em>.<br><br>When you're ready to begin, press the space bar.<br><br><strong>Content Warning: This experiment contains discussions some participants may find distressing. These include, but are not limited to: natural disasters, violence and death, and discrimination. You may close the window at any time.",
     choices: [" "],
     on_finish: function(data) {
         data.category = "instructions"
@@ -66,42 +41,98 @@ timeline.push(instructions);
 
 // TRIALS //
 
-var ChoiceArray = jsPsych.randomization.shuffle(['Progressive News Source', 'Conservative News Source', 'Neutral News Source'])
+/// Define Trial Data ///
+
+let stimuli = create_tv_array(stimuliArray)
+// console.log("stiuli.unmodded.length "+stimuli.length)
+// console.log("stimuli: "+stimuli[15].data.text)
+
+final_array = check_dupes(stimuli)
+console.log("stimuli.modded.length: "+final_array.length)
+
+let choiceArray = shuffleArray(['CNN','NPR','Fox'])
+
 
 const trials = {
     timeline: [
         {
             type: jsPsychHtmlButtonResponse,
-            choices: ChoiceArray,
-            stimulus: jsPsych.timelineVariable('stimulus'),
+            prompt: "Please select the news site you believe the headline comes from",
+            choices: choiceArray,
+            margin_vertical: '50px',
+            stimulus: jsPsych.timelineVariable('text'),
             data: jsPsych.timelineVariable('data'),
             on_finish: function(data) {
-                record_response(data),
-                data.category = data.category,
-                data.condition = GenderSelection
+                jsPsych.setProgressBar((data.trial_index - 1) / (timeline.length + final_array.length));
+                record_response(data, choiceArray)
+                data.category = "trials"
             }
         }
     ],
-    timeline_variables: [
-        {stimulus: CriticalTerm + ' places first in '+GenderMod+' trivia championship<br><br>', data: {category: "critical", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Orange tabby cat named Taters steals the show in first video sent by laser from deep space<br><br>', data: {category: "Neutral", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Extremely rare white alligator at a Florida reptile park<br><br>', data: {category: "Neutral", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Penguin parents sleep for just a few seconds at a time to guard newborns, study shows<br><br>', data: {category: "Neutral", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Taylor Swift busted as woke hypocrite on 5 activist issues: Climate, LGBTQQIAAP2S+, feminism<br><br>', data: {category: "Right", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Elon Musk’s ‘Grok’ AI is just as woke as other chatbots<br><br>', data: {category: "Right", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Sofia Coppola plays victim: ‘I’m fighting for a tiny fraction’ of male directors’ budgets<br><br>', data: {category: "Right", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Sofia Coppola gets real on `fighting for a tiny fraction’ of what male directors get<br><br>', data: {category: "Left", ChoiceArray: ChoiceArray}}, 
-        {stimulus: 'Elon Musk unveils `Grok’ AI chatbot as alternative to `woke’ rivals like ChatGPT<br><br>', data: {category: "Left", ChoiceArray: ChoiceArray}},
-        {stimulus: 'Megyn Kelly calls for boycott of Taylor Swift after singer attends Gaza relief comedy show<br><br>', data: {category: "Left", ChoiceArray: ChoiceArray}}
-    ],
+    timeline_variables: final_array,
     randomize_order: true
 }
 timeline.push(trials)
-console.log(ChoiceArray)
+
+// MEDIA QUESTIONS //
+
+const mediaQuestions = {
+    type: jsPsychSurveyLikert,
+    on_finish: function(data) {
+        data.category = "media";
+        jsPsych.setProgressBar((data.trial_index - 1) / (timeline.length + final_array.length));
+    },
+    preamble: "Please answer the following questions about your media consumption practices and political preferences. All questions are optional",
+    questions: [
+        {
+            prompt: "How would you describe your political identity? If you wish to specify, you can do so in the 'comments' section on the following page.",
+            labels: [
+                "Strong Democrat",
+                "Moderate Democrat",
+                "Moderate",
+                "Moderate Republican",
+                "Strong Republican"
+            ]
+        },
+        {
+            prompt: "How often do you consume Fox News?",
+            labels: [
+                "Never",
+                "Rarely",
+                "Sometimes",
+                "Often",
+                "Daily"
+            ]
+        },
+        {
+            prompt: "How often do you consume CNN?",
+            labels: [
+                "Never",
+                "Rarely",
+                "Sometimes",
+                "Often",
+                "Daily"
+            ]
+        },
+        {
+            prompt: "How often do you consume NPR?",
+            labels: [
+                "Never",
+                "Rarely",
+                "Sometimes",
+                "Often",
+                "Daily"
+            ]
+        },
+    ]
+}
+timeline.push(mediaQuestions)
+
 // QUESTIONNAIRE //
 
 const questionnaire = {
     type: jsPsychSurvey,
+    title: "Please answer the following optional questions. If you would like to elaborate on any of your answers, you may do so in the comment box.",
     pages: [
         [
             {
@@ -121,6 +152,18 @@ const questionnaire = {
                 options: ['Female', 'Male', 'Non-binary/Non-conforming', 'Other']
             },
             {
+                type: 'multi-choice',
+                prompt: "Do you identify as transgender or non-binary?",
+                name: 'transgender',
+                options: ['Yes', 'No', 'Decline to state']
+            },
+            {
+                type: 'multi-choice',
+                prompt: "Do you identify as part of the LGBT+ community?",
+                name: 'lgbt',
+                options: ['Yes', 'No', 'Decline to state']
+            },
+            {
                 type: 'text',
                 prompt: 'Age:',
                 name: 'age',
@@ -131,12 +174,6 @@ const questionnaire = {
                 prompt: 'Level of education:',
                 name: 'education',
                 options: ['Some high school', 'Graduated high school', 'Some college', 'Graduated college', 'Hold a higher degree']
-            },
-            {
-                type: 'text',
-                prompt: "Native language(s)? (What was/were the language(s) spoken at home when you were growing up?)",
-                name: 'language',
-                textbox_columns: 20
             },
             {
                 type: 'drop-down',

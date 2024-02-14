@@ -21,7 +21,7 @@ var jsPsychHtmlButtonResponse = (function (jspsych) {
           button_html: {
               type: jspsych.ParameterType.HTML_STRING,
               pretty_name: "Button HTML",
-              default: '<button class="jspsych-btn">%choice%</button>',
+              default: '<button class="jspsych-btn" style="font-size:18px">%choice%</button>',
               array: true,
           },
           /** Any content here will be displayed under the button(s). */
@@ -73,8 +73,15 @@ var jsPsychHtmlButtonResponse = (function (jspsych) {
           this.jsPsych = jsPsych;
       }
       trial(display_element, trial) {
+          //show prompt if there is one
+          if (trial.prompt !== null) {
+            var html = '<div id="jspsych-html-button-response-prompt" style="font-size:90%"> <strong>' + trial.prompt + "</strong></div>";
+            html += '<br><br><br>'
+        } else {
+            var html = ""
+        }
           // display stimulus
-          var html = '<div id="jspsych-html-button-response-stimulus">' + trial.stimulus + "</div>";
+            html += '<div id="jspsych-html-button-response-stimulus" style="font-size:150%">' + trial.stimulus + "</div>";
           //display buttons
           var buttons = [];
           if (Array.isArray(trial.button_html)) {
@@ -107,10 +114,6 @@ var jsPsychHtmlButtonResponse = (function (jspsych) {
                       "</div>";
           }
           html += "</div>";
-          //show prompt if there is one
-          if (trial.prompt !== null) {
-              html += trial.prompt;
-          }
           display_element.innerHTML = html;
           // start time
           var start_time = performance.now();
