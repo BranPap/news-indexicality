@@ -31,7 +31,7 @@ timeline.push(irb)
 
 const instructions = {
     type: jsPsychHtmlKeyboardResponse,
-    stimulus: "In this experiment, you will read a series of short headlines from a variety of American news sources. You will then be asked to indicate whether you believe the headlines come from a progressive news source, a conservative news source, or a politically moderate news source. Please try and answer as honestly as possible; if you are unsure about the political leaning of the publication, that is okay. Pick the source that you find <em>most appropriate</em>.<br><br>When you're ready to begin, press the space bar.<br><br><strong>Content Warning: This experiment contains discussions some participants may find distressing. These include, but are not limited to: natural disasters, violence and death, and discrimination. You may close the window at any time.",
+    stimulus: "In this experiment, you will read a series of short headlines from a variety of American news sources. You will then be asked to indicate whether you believe the headlines come from MSNBC, Fox News, or NPR. Please try and answer as honestly as possible; if you are unsure about the origin of the publication, that is okay. Pick the source that you find <em>most appropriate</em>.<br><br>When you're ready to begin, press the space bar.<br><br><strong>Content Warning: This experiment contains discussions some participants may find distressing. These include, but are not limited to: natural disasters, violence and death, and discrimination. You may close the window at any time.",
     choices: [" "],
     on_finish: function(data) {
         data.category = "instructions"
@@ -48,9 +48,9 @@ let stimuli = create_tv_array(stimuliArray)
 // console.log("stimuli: "+stimuli[15].data.text)
 
 final_array = check_dupes(stimuli)
-console.log("stimuli.modded.length: "+final_array.length)
+// console.log("stimuli.modded.length: "+final_array.length)
 
-let choiceArray = shuffleArray(['Progressive News Source','Moderate News Source','Conservative News Source'])
+let choiceArray = shuffleArray(['MSNBC','NPR','Fox News'])
 
 
 const trials = {
@@ -82,7 +82,7 @@ const mediaQuestions = {
         data.category = "media";
         jsPsych.setProgressBar((data.trial_index - 1) / (timeline.length + final_array.length));
     },
-    preamble: "Please answer the following questions about your media consumption practices and political preferences. All questions are optional",
+    preamble: "Please answer the following questions about your media consumption practices and political preferences. All questions are optional.",
     questions: [
         {
             prompt: "How would you describe your political identity? If you wish to specify, you can do so in the 'comments' section on the following page.",
@@ -95,7 +95,7 @@ const mediaQuestions = {
             ]
         },
         {
-            prompt: "How often do you consume conservative news sources (e.g. Fox News, Breitbart, Washington Examiner)?",
+            prompt: "How often do you consume Fox News?",
             labels: [
                 "Never",
                 "Rarely",
@@ -105,7 +105,7 @@ const mediaQuestions = {
             ]
         },
         {
-            prompt: "How often do you consume progressive news sources (e.g. CNN, NBC, Huffington Post)?",
+            prompt: "How often do you consume MSNBC?",
             labels: [
                 "Never",
                 "Rarely",
@@ -115,7 +115,7 @@ const mediaQuestions = {
             ]
         },
         {
-            prompt: "How often do you consume moderate news sources (e.g. NPR, Reuters, Associated Press)?",
+            prompt: "How often do you consume NPR?",
             labels: [
                 "Never",
                 "Rarely",
@@ -135,15 +135,21 @@ const questionnaire = {
     title: "Please answer the following optional questions. If you would like to elaborate on any of your answers, you may do so in the comment box.",
     pages: [
         [
-            {
-                type: 'html',
-                prompt: "Please answer the following questions:"
-            },
+            // {
+            //     type: 'html',
+            //     prompt: "Please answer the following questions:"
+            // },
             {
                 type: 'multi-choice',
                 prompt: 'Did you read the instructions and do you think you did the task correctly?', 
                 name: 'correct', 
                 options: ['Yes', 'No', 'I was confused']
+            },
+            {
+                type: 'multi-choice',
+                prompt: 'How would you describe your political beliefs?', 
+                name: 'political', 
+                options: ['Progressive', 'Moderate','Conservative', 'Independent']
             },
             {
                 type: 'drop-down',

@@ -3,22 +3,142 @@ title: "R Notebook"
 output: html_notebook
 ---
 
+# Preliminaries
+
+## Libraries & Dependencies
 ```{r}
 library(tidyverse)
-library(jsonlite)
-library(stringr)
+library(lme4)
+library(brms)
 
 source("survey.R")
+source("helpers.R")
+```
+
+## Data Read-in
+```{r}
+data <- read_csv("news_indexicality_pilot-merged.csv")
+data <- extract_demographics(data, "workerid", "response") # This script extracts information from the "Demographic" type trial and appends it to the participants' responses
+```
+
+## Adding binary coding for each of the source responses
+
+```{r}
+data <- data %>% 
+  mutate(
+    conResponse = ifelse(result == "Conservative News Source",1,0),
+    progResponse = ifelse(result == "Progressive News Source",1,0),
+    modResponse = ifelse(result == "Moderate News Source",1,0)
+  )
 ```
 
 
+
+# Analysis
+
 ```{r}
-data <- read_csv("news_indexicality_test-merged-2.csv")
+CriticalData <- data %>% 
+  filter(dataType == "Critical")
+```
+
+
+## Conservative Response
+
+### Plot
+
+```{r}
+data %>% 
+  filter(dataType == "Critical") %>% 
+  mutate(
+    "conResponse" = ifelse(result=="Conservative News Source",1,0)
+  ) %>% 
+  group_by(refExp) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>%
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=refExp,y=meanConResponse)) + 
+  geom_bar(stat = "identity", position="dodge") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  coord_flip()
+```
+
+### Model
+
+```{r}
+conModel <- brm(conResponse ~ refExp,data=CriticalData)
 ```
 
 ```{r}
-test_data<- extract_demographics(data,"workerid","response")
+conModel
+```
 
-test_data
+
+
+## Progressive Responses
+
+### Plot
+
+```{r}
+data %>% 
+  filter(dataType == "Critical") %>% 
+  mutate(
+    "progResponse" = ifelse(result=="Progressive News Source",1,0)
+  ) %>% 
+  group_by(refExp) %>% 
+  summarize(
+    responseCount = n(),
+    meanProgResponse = mean(progResponse),
+    CI.Low = ci.low(progResponse),
+    CI.High = ci.high(progResponse),
+  ) %>%
+  mutate(YMin = meanProgResponse - CI.Low, YMax = meanProgResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=refExp,y=meanProgResponse)) + 
+  geom_bar(stat = "identity", position="dodge") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  coord_flip()
+```
+
+## Moderate Responses
+
+### Plot
+
+```{r}
+data %>% 
+  filter(dataType == "Critical") %>% 
+  mutate(
+    "modResponse" = ifelse(result=="Moderate News Source",1,0)
+  ) %>% 
+  group_by(refExp) %>% 
+  summarize(
+    responseCount = n(),
+    meanModResponse = mean(modResponse),
+    CI.Low = ci.low(modResponse),
+    CI.High = ci.high(modResponse),
+  ) %>%
+  mutate(YMin = meanModResponse - CI.Low, YMax = meanModResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=refExp,y=meanModResponse)) + 
+  geom_bar(stat = "identity", position="dodge") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  coord_flip()
+```
+
+
+
+
+# Miscellaneous
+
+## Participant Comments
+
+```{r}
+data %>% 
+  filter(comments != "") %>% 
+  select("comments")
 ```
 

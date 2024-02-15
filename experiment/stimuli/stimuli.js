@@ -42,42 +42,42 @@ let stimuliArray = [
         "id": 1
     },
     {
-        "text": "Transgender Woman Wins Cycling Women's Championship",
+        "text": "Transgender Woman Wins Women's Cycling Championship",
         "source": "Breitbart",
         "dataType": "Critical",
         "refExp": "Transgender Woman",
         "id": 2
     },
     {
-        "text": "Trans Woman Wins Cycling Women's Championship",
+        "text": "Trans Woman Wins Women's Cycling Championship",
         "source": "Breitbart",
         "dataType": "Critical",
         "refExp": "Trans Woman",
         "id": 2
     },
     {
-        "text": "Biological Male Wins Cycling Women's Championship",
+        "text": "Biological Male Wins Women's Cycling Championship",
         "source": "Breitbart",
         "dataType": "Critical",
         "refExp": "Biological Male",
         "id": 2
     },
     {
-        "text": "Transgender Man Wins Cycling Men's Championship",
+        "text": "Transgender Man Wins Men's Cycling Championship",
         "source": "Breitbart",
         "dataType": "Critical",
         "refExp": "Transgender Man",
         "id": 2
     },
     {
-        "text": "Trans Man Wins Cycling Men's Championship",
+        "text": "Trans Man Wins Men's Cycling Championship",
         "source": "Breitbart",
         "dataType": "Critical",
         "refExp": "Trans Man",
         "id": 2
     },
     {
-        "text": "Biological Female Wins Cycling Men's Championship",
+        "text": "Biological Female Wins Men's Cycling Championship",
         "source": "Breitbart",
         "dataType": "Critical",
         "refExp": "Biological Female",
@@ -546,42 +546,42 @@ let stimuliArray = [
         "id": 13
     },
     {
-        "text": "Eu Court Says Britain Discriminated Against Transgender Woman In Pension Age Dispute",
+        "text": "EU Court Says Britain Discriminated Against Transgender Woman In Pension Age Dispute",
         "source": "PinkNews",
         "dataType": "Critical",
         "refExp": "Transgender Woman",
         "id": 14
     },
     {
-        "text": "Eu Court Says Britain Discriminated Against Trans Woman In Pension Age Dispute",
+        "text": "EU Court Says Britain Discriminated Against Trans Woman In Pension Age Dispute",
         "source": "PinkNews",
         "dataType": "Critical",
         "refExp": "Trans Woman",
         "id": 14
     },
     {
-        "text": "Eu Court Says Britain Discriminated Against Biological Male In Pension Age Dispute",
+        "text": "EU Court Says Britain Discriminated Against Biological Male In Pension Age Dispute",
         "source": "PinkNews",
         "dataType": "Critical",
         "refExp": "Biological Male",
         "id": 14
     },
     {
-        "text": "Eu Court Says Britain Discriminated Against Transgender Man In Pension Age Dispute",
+        "text": "EU Court Says Britain Discriminated Against Transgender Man In Pension Age Dispute",
         "source": "PinkNews",
         "dataType": "Critical",
         "refExp": "Transgender Man",
         "id": 14
     },
     {
-        "text": "Eu Court Says Britain Discriminated Against Trans Man In Pension Age Dispute",
+        "text": "EU Court Says Britain Discriminated Against Trans Man In Pension Age Dispute",
         "source": "PinkNews",
         "dataType": "Critical",
         "refExp": "Trans Man",
         "id": 14
     },
     {
-        "text": "Eu Court Says Britain Discriminated Against Biological Female In Pension Age Dispute",
+        "text": "EU Court Says Britain Discriminated Against Biological Female In Pension Age Dispute",
         "source": "PinkNews",
         "dataType": "Critical",
         "refExp": "Biological Female",
@@ -1008,13 +1008,13 @@ let stimuliArray = [
         "id": 48
     },
     {
-        "text": "Beware Misleading AI Hype And 'AI-Washing,' Sec Chair Warns",
+        "text": "Beware Misleading AI Hype And 'AI-Washing,' SEC Chair Warns",
         "source": "CNN",
         "dataType": "Filler",
         "id": 49
     },
     {
-        "text": "Tiktok Star Ali C Lopez Claims 'Declining Masculinity' Is Getting 'Out Of Control'",
+        "text": "TikTok Star Ali C Lopez Claims 'Declining Masculinity' Is Getting 'Out Of Control'",
         "source": "PinkNews",
         "dataType": "Filler",
         "id": 50
@@ -1024,31 +1024,31 @@ let stimuliArray = [
         "source": "Breitbart",
         "dataType": "Attention",
         "id": 51,
-        "correct": "Breitbart"
+        "correct": "Fox News"
     },
     {
         "text": "Fox Exclusive: RNC: Florida Republican Voter Registration 'Nearly Doubled' In 2023",
         "source": "Breitbart",
         "dataType": "Attention",
         "id": 52,
-        "correct": "Breitbart"
+        "correct": "Fox News"
     },
     {
-        "text": "CNN Exclusive: Claire Richards On Making 'Gay Anthems' For New Album Euphoria And The Future Of Steps",
+        "text": "MSNBC Exclusive: Claire Richards On Making 'Gay Anthems' For New Album Euphoria And The Future Of Steps",
         "source": "PinkNews",
         "dataType": "Attention",
         "id": 53,
-        "correct": "PinkNews"
+        "correct": "MSNBC"
     },
     {
-        "text": "CNN Exclusive: Sophie Ellis-Bextor Saw Saltburn Nude Scene For First Time With Son And Mother",
+        "text": "MSNBC Exclusive: Sophie Ellis-Bextor Saw Saltburn Nude Scene For First Time With Son And Mother",
         "source": "PinkNews",
         "dataType": "Attention",
         "id": 54,
-        "correct": "PinkNews"
+        "correct": "MSNBC"
     },
     {
-        "text": "NPR Exclusive: Exclusive: The Education Department Says It Will Fix Its $1.8 Billion FAFSA Mistake",
+        "text": "NPR Exclusive: The Education Department Says It Will Fix Its $1.8 Billion FAFSA Mistake",
         "source": "NPR",
         "dataType": "Attention",
         "id": 55,

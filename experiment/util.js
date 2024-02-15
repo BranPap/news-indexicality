@@ -19,6 +19,10 @@ function shuffleArray(array) {
     return array;
   }
 
+// Gender arrays
+let masc = ['Transgender Man', 'Trans Man', 'Biological Female'];
+let fem = ['Transgender Woman', 'Trans Woman', 'Biological Male'];
+
 function create_tv_array(json_object) {
     let tv_array = [];
     for (let i = 0; i < json_object.length; i++) {
@@ -26,10 +30,15 @@ function create_tv_array(json_object) {
         obj.text = json_object[i].text;
         obj.data = {};
         obj.data.item = json_object[i].id;
-        // obj.data.text = json_object[i].text;
+        obj.data.source = json_object[i].source;
         obj.data.dataType = json_object[i].dataType;
         obj.data.correct = json_object[i].correct;
         obj.data.refExp = json_object[i].refExp;
+        if (masc.includes(json_object[i].refExp)) {
+            obj.data.refGender = "masc"
+        } else if (fem.includes(json_object[i].refExp)) {
+            obj.data.refGender = "fem"
+        };
         tv_array.push(obj)
     }
     return tv_array;
