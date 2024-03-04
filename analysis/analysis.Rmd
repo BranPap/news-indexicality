@@ -10,49 +10,221 @@ output: html_notebook
 library(tidyverse)
 library(lme4)
 library(brms)
+library(wesanderson)
+library(ggparty)
+library(partykit)
 
 source("survey.R")
 source("helpers.R")
 ```
 
 ## Data Read-in
+
 ```{r}
-data <- read_csv("news_indexicality_pilot-merged.csv")
+data <- read_csv("news_indexicality_main-merged.csv")
 data <- extract_demographics(data, "workerid", "response") # This script extracts information from the "Demographic" type trial and appends it to the participants' responses
+data <- extract_likert(data, "workerid","response")
 ```
 
-## Adding binary coding for each of the source responses
+## Coding Data
 
 ```{r}
 data <- data %>% 
   mutate(
-    conResponse = ifelse(result == "Conservative News Source",1,0),
-    progResponse = ifelse(result == "Progressive News Source",1,0),
-    modResponse = ifelse(result == "Moderate News Source",1,0)
+    conResponse = ifelse(result == "Fox News",1,0), # Convert 'FoxNews' Responses to binary
+    progResponse = ifelse(result == "MSNBC",1,0), # Convert 'MSNBC' Responses to binary
+    modResponse = ifelse(result == "NPR",1,0), # Convert 'NPR' Responses to binary
+    modifierType = ifelse(refExp %in% c("Transgender Woman","Transgender Man"),"Transgender",ifelse(refExp %in% c("Trans Woman","Trans Man"),"Trans","Biological")), # Code macrocategories for each of the modifiers
+    Q0 = as.numeric(Q0), 
+    politicalTernary = case_when( ## Bin participants into "Democrat", "Republican", and "Moderate"
+      Q0 %in% c(0,1) ~ "Dem",
+      Q0 %in% c(3,4) ~ "Rep",
+      Q0 == 2 ~ "Moderate",
+      TRUE ~ "Declined"
+    )
   )
 ```
 
+## Attention Checks
 
+Participants who fail more than 1 attention check question are excluded from analysis. This leaves us with 183 participants whose data we can use in analysis.
 
-# Analysis
+```{r}
+attentionTrials <- data %>% 
+  filter(dataType == "Attention") %>% 
+  mutate(attentionCheck = ifelse(correct.x == result,1,0)) %>% 
+  group_by(workerid,political) %>% 
+  summarize(
+    meanAttention = mean(attentionCheck)
+  ) %>% 
+  select(c("workerid","meanAttention","political")) %>% 
+  filter(meanAttention < 0.8)
+  
+exclusion <- attentionTrials$workerid
 
+data <- data %>% 
+  filter(!(workerid) %in% exclusion)
+```
+
+## DataSet Creation
+
+Separate out critical trials from filler trials
 ```{r}
 CriticalData <- data %>% 
   filter(dataType == "Critical")
+
+fillerTrials <- data %>% 
+  filter(dataType == "Filler") %>% 
+  mutate(source = case_when( # Because a handful of fillers were actually CNN, let's rename them to "Left-Wing" and then rename the other variables to concord
+    source %in% c("CNN","PinkNews") ~ "Left-Wing",
+    source == "Breitbart" ~ "Right-Wing",
+    source == "NPR" ~ "Moderate"
+  )
+  )
+```
+
+# Filler Trial Analysis
+
+## Conservative
+
+```{r}
+fillerTrials %>% 
+  group_by(source) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>% 
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>%
+  ggplot(aes(x=source,y=meanConResponse,fill=source)) +
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") +
+  theme_bw() + 
+  theme(legend.position="none") + 
+  ylim(0,1) + 
+  labs(x="Headline Leaning",y="Proportion of 'Fox News' Responses") + 
+  scale_fill_manual(values = wes_palette("IsleofDogs1"))
+```
+
+```{r}
+fillerTrials %>% 
+  filter(politicalTernary!= "Declined") %>% 
+  group_by(source,politicalTernary) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>% 
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>%
+  ggplot(aes(x=source,y=meanConResponse,fill=source)) +
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") +
+  theme_bw() + 
+  theme(legend.position="none") + 
+  ylim(0,1) + 
+  labs(x="Headline Leaning",y="Proportion of 'Fox News' Responses") + 
+  scale_fill_manual(values = wes_palette("IsleofDogs1")) + 
+  facet_wrap(~politicalTernary, scales="free_x")
+```
+
+## Progressive
+
+```{r}
+fillerTrials %>% 
+  filter(politicalTernary != "Declined") %>% 
+  group_by(source,politicalTernary) %>% 
+  summarize(
+    responseCount = n(),
+    meanProgResponse = mean(progResponse),
+    CI.Low = ci.low(progResponse),
+    CI.High = ci.high(progResponse),
+  ) %>% 
+  mutate(YMin = meanProgResponse - CI.Low, YMax = meanProgResponse + CI.High) %>%
+  ggplot(aes(x=source,y=meanProgResponse,fill=source)) +
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") +
+  theme_bw() + 
+  theme(legend.position="none") + 
+  ylim(0,1) + 
+  labs(x="Headline Leaning",y="Proportion of 'MSNBC' Responses") + 
+  scale_fill_manual(values = wes_palette("IsleofDogs1")) + 
+  facet_wrap(~politicalTernary, scales="free_x")
+```
+
+## Moderate
+
+
+```{r}
+fillerTrials %>% 
+  filter(politicalTernary != "Declined") %>% 
+  group_by(source,politicalTernary) %>% 
+  summarize(
+    responseCount = n(),
+    meanModResponse = mean(modResponse),
+    CI.Low = ci.low(modResponse),
+    CI.High = ci.high(modResponse),
+  ) %>% 
+  mutate(YMin = meanModResponse - CI.Low, YMax = meanModResponse + CI.High) %>%
+  ggplot(aes(x=source,y=meanModResponse,fill=source)) +
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") +
+  theme_bw() + 
+  theme(legend.position="none") + 
+  ylim(0,1) + 
+  labs(x="Headline Leaning",y="Proportion of 'NPR' Responses") + 
+  scale_fill_manual(values = wes_palette("IsleofDogs1")) + 
+  facet_wrap(~politicalTernary, scales="free_x")
 ```
 
 
-## Conservative Response
 
-### Plot
+
+# Pre-Registered Model Analyses
+
+## Conservative Model
+
+### Data Subset
 
 ```{r}
-data %>% 
-  filter(dataType == "Critical") %>% 
-  mutate(
-    "conResponse" = ifelse(result=="Conservative News Source",1,0)
-  ) %>% 
-  group_by(refExp) %>% 
+conModelData <- CriticalData %>% 
+  filter(politicalTernary %in% c("Dem","Rep")) %>%
+  mutate(politicalTernary = fct_relevel(politicalTernary, "Dem"))
+
+contrasts(conModelData$politicalTernary)
+```
+
+### Model
+
+```{r}
+m.b <- brm(conResponse ~ modifierType*source*politicalTernary + (1|workerid) + (1|item), data = conModelData, family=bernoulli(link="logit"), iter = 2000)
+```
+
+```{r}
+summary(m.b)
+```
+
+```{r}
+plot(m.b)
+```
+
+```{r}
+h <- hypothesis(m.b, "b_modifierTypeTransgender:politicalTernaryRep < 0")
+print(h, digits=4)
+```
+
+### Plots
+
+```{r}
+CriticalData %>% 
+  # mutate(ageGroup = ifelse(age <= 40, "younger","older")) %>%
+  filter(politicalTernary %in% c("Rep","Dem")) %>%  # Uncomment when faceting by political
+  group_by(modifierType) %>% 
   summarize(
     responseCount = n(),
     meanConResponse = mean(conResponse),
@@ -61,21 +233,279 @@ data %>%
   ) %>%
   mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
   # select(c("refExp","meanConResponse"))
-  ggplot(aes(x=refExp,y=meanConResponse)) + 
-  geom_bar(stat = "identity", position="dodge") + 
+  ggplot(aes(x=modifierType,y=meanConResponse,fill=modifierType)) + 
+  geom_bar(stat = "identity") + 
   geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
-  coord_flip()
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Modifier Type', y='Proportion of "Fox News" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  # facet_grid(~politicalTernary, scales="free_x") +
+  # facet_grid(gender~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+```{r}
+CriticalData %>% 
+  # mutate(ageGroup = ifelse(age <= 40, "younger","older")) %>%
+  filter(politicalTernary %in% c("Rep","Dem","Moderate")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,politicalTernary) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>%
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanConResponse,fill=modifierType)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Modifier Type', y='Proportion of "Fox News" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_grid(~politicalTernary, scales="free_x") +
+  # facet_grid(gender~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+```{r}
+CriticalData %>% 
+  mutate(ageGroup = ifelse(age <= 40, "younger","older")) %>%
+  filter(politicalTernary %in% c("Rep","Dem")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,politicalTernary,ageGroup) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>%
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanConResponse,fill=modifierType)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Modifier Type', y='Proportion of "Fox News" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_grid(ageGroup~politicalTernary, scales="free_x") +
+  # facet_grid(gender~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+```{r}
+CriticalData %>% 
+  mutate(ageGroup = ifelse(age <= 40, "younger","older")) %>%
+  filter(politicalTernary %in% c("Rep","Dem")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,politicalTernary,ageGroup) %>% 
+  summarize(
+    responseCount = n(),
+    meanProgResponse = mean(progResponse),
+    CI.Low = ci.low(progResponse),
+    CI.High = ci.high(progResponse),
+  ) %>%
+  mutate(YMin = meanProgResponse - CI.Low, YMax = meanProgResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanProgResponse,fill=modifierType)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Modifier Type', y='Proportion of "MSNBC" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_grid(ageGroup~politicalTernary, scales="free_x") +
+  # facet_grid(gender~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+```{r}
+CriticalData %>% 
+  mutate(ageGroup = ifelse(age <= 40, "younger","older")) %>%
+  filter(politicalTernary %in% c("Rep","Dem")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,politicalTernary,ageGroup) %>% 
+  summarize(
+    responseCount = n(),
+    meanModResponse = mean(modResponse),
+    CI.Low = ci.low(modResponse),
+    CI.High = ci.high(modResponse),
+  ) %>%
+  mutate(YMin = meanModResponse - CI.Low, YMax = meanModResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanModResponse,fill=modifierType)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Modifier Type', y='Proportion of "NPR" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_grid(ageGroup~politicalTernary, scales="free_x") +
+  # facet_grid(gender~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+```{r}
+CriticalData %>% 
+  mutate(ageGroup = ifelse(age <= 40, "younger","older")) %>%
+  filter(!is.na(Q0)) %>% 
+  # filter(politicalTernary %in% c("Rep","Dem")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,Q0) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>%
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanConResponse,fill=modifierType)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Modifier Type', y='Proportion of "Fox News" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_grid(~Q0, scales="free_x") +
+  # facet_grid(gender~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+```{r}
+CriticalData %>% 
+  mutate(Q1 = as.numeric(Q1)) %>%
+  filter(!is.na(Q1),
+  politicalTernary != "Declined") %>% 
+  group_by(politicalTernary) %>% 
+  summarize(
+    responseCount = n(),
+    meanFoxConsumption = mean(Q1),
+    CI.Low = ci.low(Q1),
+    CI.High = ci.high(Q1),
+  ) %>%
+  mutate(YMin = meanFoxConsumption - CI.Low, YMax = meanFoxConsumption + CI.High) %>% 
+  ggplot(aes(x=politicalTernary,y=meanFoxConsumption,fill=politicalTernary)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  scale_fill_manual(values=wes_palette("AsteroidCity3")) + 
+  theme_bw()
+```
+
+```{r}
+CriticalData %>% 
+  mutate(Q2 = as.numeric(Q2)) %>%
+  filter(!is.na(Q2),
+  politicalTernary != "Declined") %>% 
+  group_by(politicalTernary) %>% 
+  summarize(
+    responseCount = n(),
+    meanMSBCConsumption = mean(Q2),
+    CI.Low = ci.low(Q2),
+    CI.High = ci.high(Q2),
+  ) %>%
+  mutate(YMin = meanMSBCConsumption - CI.Low, YMax = meanMSBCConsumption + CI.High) %>% 
+  ggplot(aes(x=politicalTernary,y=meanMSBCConsumption,fill=politicalTernary)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  scale_fill_manual(values=wes_palette("AsteroidCity3")) + 
+  theme_bw()
+```
+
+### Demographic Analysis
+
+```{r}
+CriticalData %>% 
+  mutate(
+    ageGroup = ifelse(age >= 40, "Older","Younger")
+  ) %>% 
+  select(c("workerid","ageGroup","politicalTernary")) %>% 
+  unique() %>% 
+  group_by(ageGroup,politicalTernary) %>% 
+  summarize(
+    partitipantCount = n()
+  )
+```
+
+
+## Progressive Model
+
+### Data Subset
+
+
+```{r}
+progModelData <- CriticalData %>% 
+  filter(politicalTernary %in% c("Dem","Rep")) %>%
+  mutate(politicalTernary = fct_relevel(politicalTernary, "Dem"))
+
+contrasts(progModelData$politicalTernary)
 ```
 
 ### Model
 
 ```{r}
-conModel <- brm(conResponse ~ refExp,data=CriticalData)
+m.b <- brm(progResponse ~ modifierType*source*politicalTernary + (1|workerid) + (1|item), data = progModelData, family=bernoulli(link="logit"), iter = 2000)
 ```
 
 ```{r}
-conModel
+summary(m.b)
 ```
+
+```{r}
+plot(m.b)
+```
+
+```{r}
+h <- hypothesis(m.b, "sourcePinkNews > 0")
+print(h, digits=4)
+```
+
+
+
+
+## Moderate Model
+
+### Data Subset
+
+
+
+
+```{r}
+CriticalData %>% 
+  # filter(!political %in% c("Independent","Moderate")) %>%  # Uncomment when faceting by political
+  group_by(refExp,refGender) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>%
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=refExp,y=meanConResponse, fill=refGender)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Political Party', y='Mean Fox News Consumption Score', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity3")[2:4]) + 
+  # facet_wrap(~refGender, scales="free_x") +
+  # facet_grid(political~refGender, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
 
 
 
@@ -83,12 +513,31 @@ conModel
 
 ### Plot
 
+# ```{r}
+# CriticalData %>% 
+#   group_by(refExp,refGender,lgbt) %>% 
+#   summarize(
+#     responseCount = n(),
+#     meanProgResponse = mean(progResponse),
+#     CI.Low = ci.low(progResponse),
+#     CI.High = ci.high(progResponse),
+#   ) %>%
+#   mutate(YMin = meanProgResponse - CI.Low, YMax = meanProgResponse + CI.High) %>% 
+#   ggplot(aes(x=refExp,y=meanProgResponse, fill=refGender)) + 
+#   geom_bar(stat = "identity", position="dodge") + 
+#   geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+#   geom_hline(yintercept = 0.33, linetype="dashed", color = "red") + 
+#   # coord_flip() + 
+#   labs(x='Referring Expression', y='Proportion of "MSNBC" Responses', fill='Gender of Referring Expression') + 
+#   theme_bw() + 
+#   theme(legend.position="bottom") + 
+#   scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+#   facet_wrap(~lgbt)
+# ```
+
 ```{r}
-data %>% 
-  filter(dataType == "Critical") %>% 
-  mutate(
-    "progResponse" = ifelse(result=="Progressive News Source",1,0)
-  ) %>% 
+CriticalData %>% 
+  # filter(!political %in% c("Independent","Moderate")) %>% # uncomment when faceting by political
   group_by(refExp) %>% 
   summarize(
     responseCount = n(),
@@ -98,23 +547,37 @@ data %>%
   ) %>%
   mutate(YMin = meanProgResponse - CI.Low, YMax = meanProgResponse + CI.High) %>% 
   # select(c("refExp","meanConResponse"))
-  ggplot(aes(x=refExp,y=meanProgResponse)) + 
-  geom_bar(stat = "identity", position="dodge") + 
+  ggplot(aes(x=refExp,y=meanProgResponse, fill=refGender)) + 
+  geom_bar(stat = "identity") + 
   geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
-  coord_flip()
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Referring Expression', y='Proportion of "MSNBC" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  # facet_grid(political~refGender, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
 ```
+
+### Model
+
+```{r}
+progModel <- brm(progResponse ~ refExp,data=CriticalData)
+```
+
+```{r}
+summary(progModel)
+```
+
 
 ## Moderate Responses
 
 ### Plot
 
 ```{r}
-data %>% 
-  filter(dataType == "Critical") %>% 
-  mutate(
-    "modResponse" = ifelse(result=="Moderate News Source",1,0)
-  ) %>% 
-  group_by(refExp) %>% 
+CriticalData %>% 
+  group_by(refExp, refGender) %>% 
   summarize(
     responseCount = n(),
     meanModResponse = mean(modResponse),
@@ -123,13 +586,26 @@ data %>%
   ) %>%
   mutate(YMin = meanModResponse - CI.Low, YMax = meanModResponse + CI.High) %>% 
   # select(c("refExp","meanConResponse"))
-  ggplot(aes(x=refExp,y=meanModResponse)) + 
+  ggplot(aes(x=refExp,y=meanModResponse, fill = refGender)) + 
   geom_bar(stat = "identity", position="dodge") + 
   geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
-  coord_flip()
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "red") +
+  labs(x='Referring Expression', y='Proportion of "NPR" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_wrap(~refGender, scales="free_x") + 
+  ylim(0,1)
 ```
 
-
+```{r}
+CriticalData %>% 
+  summarize(
+    meanConResponse = mean(conResponse),
+    meanProgResponse = mean(progResponse),
+    meanModResponse = mean(modResponse)
+  ) 
+```
 
 
 # Miscellaneous
@@ -139,6 +615,543 @@ data %>%
 ```{r}
 data %>% 
   filter(comments != "") %>% 
-  select("comments")
+  select(c("workerid","comments")) %>% 
+  group_by(workerid,comments) %>% 
+  unique()
 ```
+
+## Proportion of Political 
+
+```{r}
+data %>% 
+  select(c("workerid","politicalTernary","gender")) %>% 
+  group_by(workerid,politicalTernary,gender) %>% 
+  unique() %>% 
+  group_by(politicalTernary,gender) %>% 
+  summarize(count = n())
+```
+
+## LGBT
+
+```{r}
+data %>% 
+  select(c("workerid","lgbt")) %>% 
+  group_by(workerid,lgbt) %>% 
+  unique() %>% 
+  group_by(lgbt) %>% 
+  summarize(count = n())
+```
+
+```{r}
+CriticalData %>% 
+  filter(lgbt != "Decline to state") %>% 
+  group_by(modifierType,lgbt) %>% 
+  # filter(!political %in% c("Independent","Moderate")) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>%
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanConResponse)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Referring Expression', y='Proportion of "Fox News" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  # facet_wrap(~refGender, scales="free_x") + 
+  facet_grid(~lgbt, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+
+# By Item Effects
+
+```{r}
+CriticalData %>% 
+  mutate(source = ifelse(source=="CNN","PinkNews",source)) %>% 
+  group_by(item,modifierType) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>%
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
+  ggplot(aes(x=modifierType,y=meanConResponse)) + 
+  geom_bar(stat="identity",position="dodge") + 
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "red") +
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  theme_bw() + 
+  scale_fill_manual(values=wes_palette("AsteroidCity2")[3:4])+
+  facet_wrap(~item, scales = "free_x")
+  # facet_wrap(~refGender)
+```
+
+```{r}
+CriticalData %>% 
+  mutate(source = ifelse(source=="CNN","PinkNews",source)) %>% 
+  group_by(item,source) %>% 
+  summarize(
+    responseCount = n(),
+    meanProgResponse = mean(progResponse),
+    CI.Low = ci.low(progResponse),
+    CI.High = ci.high(progResponse),
+  ) %>%
+  mutate(YMin = meanProgResponse - CI.Low, YMax = meanProgResponse + CI.High) %>% 
+  ggplot(aes(x=reorder(item,-meanProgResponse),y=meanProgResponse,fill=source)) + 
+  geom_bar(stat="identity",position="dodge") + 
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "red") +
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  theme_bw() + 
+  scale_fill_manual(values=wes_palette("AsteroidCity2")[3:4])
+```
+
+
+
+```{r}
+CriticalData %>% 
+  mutate(source = ifelse(source=="CNN","PinkNews",source)) %>% 
+  group_by(item,source) %>% 
+  summarize(
+    responseCount = n(),
+    meanModResponse = mean(modResponse),
+    CI.Low = ci.low(modResponse),
+    CI.High = ci.high(modResponse),
+  ) %>%
+  mutate(YMin = meanModResponse - CI.Low, YMax = meanModResponse + CI.High) %>% 
+  ggplot(aes(x=reorder(item,-meanModResponse),y=meanModResponse,fill=source)) + 
+  geom_bar(stat="identity",position="dodge") + 
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "red") +
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  theme_bw() + 
+  scale_fill_manual(values=wes_palette("AsteroidCity2")[3:4])
+```
+
+### Age
+
+```{r}
+CriticalData %>% 
+  mutate(ageGroup = ifelse(age <= 40, "younger","older")) %>% 
+  # filter(!political %in% c("Independent","Moderate")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,ageGroup) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>%
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanConResponse, fill=ageGroup)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Referring Expression', y='Proportion of "Fox News" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_wrap(~ageGroup, scales="free_x") +
+  # facet_grid(~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+```{r}
+CriticalData %>% 
+  mutate(ageGroup = ifelse(age <= 40, "younger","older")) %>% 
+  # filter(!political %in% c("Independent","Moderate")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,ageGroup) %>% 
+  summarize(
+    responseCount = n(),
+    meanProgResponse = mean(progResponse),
+    CI.Low = ci.low(progResponse),
+    CI.High = ci.high(progResponse),
+  ) %>%
+  mutate(YMin = meanProgResponse - CI.Low, YMax = meanProgResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanProgResponse, fill=ageGroup)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Referring Expression', y='Proportion of "MSNBC" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_wrap(~ageGroup, scales="free_x") +
+  # facet_grid(~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+
+```{r}
+CriticalData %>% 
+  mutate(ageGroup = ifelse(age <= 40, "younger","older")) %>% 
+  # filter(!political %in% c("Independent","Moderate")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,ageGroup) %>% 
+  summarize(
+    responseCount = n(),
+    meanModResponse = mean(modResponse),
+    CI.Low = ci.low(modResponse),
+    CI.High = ci.high(modResponse),
+  ) %>%
+  mutate(YMin = meanModResponse - CI.Low, YMax = meanModResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanModResponse, fill=ageGroup)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Referring Expression', y='Proportion of "MSNBC" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_wrap(~ageGroup, scales="free_x") +
+  # facet_grid(~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+## Collapsed Modifier
+
+
+```{r}
+CriticalData %>% 
+  # mutate(ageGroup = ifelse(age <= 35, "younger","older")) %>% 
+  # filter(!political %in% c("Independent","Moderate")) %>%  # Uncomment when faceting by political
+  group_by(modifierType) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>%
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanConResponse,fill=modifierType)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Modifier Type', y='Proportion of "Fox News" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  # facet_wrap(~political, scales="free_x") +
+  # facet_grid(gender~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+```{r}
+CriticalData %>% 
+  # mutate(ageGroup = ifelse(age <= 35, "younger","older")) %>% 
+  filter(politicalTernary %in% c("Dem","Rep")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,politicalTernary) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>%
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanConResponse,fill=modifierType)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Modifier Type', y='Proportion of "Fox News" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_wrap(~politicalTernary, scales="free_x") +
+  # facet_grid(gender~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+```{r}
+CriticalData %>% 
+  # mutate(ageGroup = ifelse(age <= 35, "younger","older")) %>% 
+  filter(political %in% c("Progressive","Conservative")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,political) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>%
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanConResponse,fill=modifierType)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Modifier Type', y='Proportion of "Fox News" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_wrap(~political, scales="free_x") +
+  # facet_grid(gender~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+
+```{r}
+CriticalData %>% 
+  mutate(ageGroup = ifelse(age <= 40, "younger","older")) %>%
+  filter(political %in% c("Progressive","Conservative")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,political,ageGroup) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>%
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanConResponse,fill=modifierType)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Modifier Type', y='Proportion of "Fox News" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  # facet_wrap(~political, scales="free_x") +
+  facet_grid(ageGroup~political, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+
+```{r}
+CriticalData %>% 
+  # mutate(ageGroup = ifelse(age <= 35, "younger","older")) %>% 
+  # filter(!political %in% c("Independent","Moderate")) %>%  # Uncomment when faceting by political
+  group_by(modifierType) %>% 
+  summarize(
+    responseCount = n(),
+    meanProgResponse = mean(progResponse),
+    CI.Low = ci.low(progResponse),
+    CI.High = ci.high(progResponse),
+  ) %>%
+  mutate(YMin = meanProgResponse - CI.Low, YMax = meanProgResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanProgResponse,fill=modifierType)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Modifier Type', y='Proportion of "MSNBC" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  # facet_wrap(~political, scales="free_x") +
+  # facet_grid(gender~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+```{r}
+CriticalData %>% 
+  group_by(modifierType) %>% 
+  mutate()
+```
+
+
+
+```{r}
+CriticalData %>% 
+  mutate(ageGroup = ifelse(age <= 40, "younger","older")) %>%
+  filter(political %in% c("Progressive","Conservative")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,political) %>% 
+  summarize(
+    responseCount = n(),
+    meanProgResponse = mean(progResponse),
+    CI.Low = ci.low(progResponse),
+    CI.High = ci.high(progResponse),
+  ) %>%
+  mutate(YMin = meanProgResponse - CI.Low, YMax = meanProgResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanProgResponse,fill=modifierType)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Modifier Type', y='Proportion of "MSNBC" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_wrap(~political, scales="free_x") +
+  # facet_grid(gender~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+### Conditional Inference Testing
+
+```{r}
+predictorsOnly <- CriticalData %>% 
+  filter(political %in% c("Progressive","Conservative")) %>% 
+  select(c("conResponse","modifierType","source","political")) %>% 
+  mutate(
+    modifierType = as.factor(modifierType),
+    source = as.factor(source),
+    political = as.factor(political),
+    conResponse = as.factor(conResponse)
+  )
+
+prop.table(table(CriticalData$modifierType))
+```
+
+```{r}
+conConInfTree <- partykit::ctree(
+  conResponse ~ .,
+  data = predictorsOnly,
+  control = ctree_control(testtype = "Teststatistic",
+                          maxdepth = 2)
+)
+```
+
+```{r}
+condConTree <- ggparty(conConInfTree, layout =) +
+  geom_edge() +
+  geom_edge_label() +
+  geom_node_label(
+    line_list = list(
+      aes(label = splitvar),
+      aes(label = paste("N =", nodesize))
+    ),
+    line_gpar = list(
+      list(size = 13),
+      list(size = 10)
+    ),
+    ids = "inner"
+  ) +
+  geom_node_label(aes(label = paste0("Node ", id, ", N = ", nodesize)),
+    ids = "terminal", nudge_y = -0.3, nudge_x = 0.01
+  ) +
+  geom_node_plot(
+    gglist = list(
+      geom_bar(aes(x = "", fill = conResponse),
+        position = position_fill(), color = "black"
+      ),
+      theme_minimal(),
+      scale_fill_manual(values = c("red", "grey"), guide = FALSE),
+      scale_y_continuous(breaks = c(0, 1)),
+      xlab(""), ylab("proportion declined"),
+      geom_text(aes(
+        x = "", group = conResponse,
+        label = stat(count)
+      ),
+      stat = "count", position = position_fill(), vjust = 1.7
+      )
+    ),
+    shared_axis_labels = TRUE
+  )
+```
+
+```{r}
+ggsave("images/condConTree.png", plot=condConTree, width=20, height=12)
+```
+
+```{r}
+CriticalData %>% 
+  group_by(age,workerid) %>% 
+  unique() %>% 
+  ggplot(aes(x=age)) + 
+  geom_histogram(stat="count")
+```
+
+
+```{r}
+CriticalData %>% 
+  # mutate(ageGroup = ifelse(age <= 40, "younger","older")) %>% 
+  # filter(!political %in% c("Independent","Moderate")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,source) %>% 
+  summarize(
+    responseCount = n(),
+    meanConResponse = mean(conResponse),
+    CI.Low = ci.low(conResponse),
+    CI.High = ci.high(conResponse),
+  ) %>%
+  mutate(YMin = meanConResponse - CI.Low, YMax = meanConResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanConResponse, fill=source)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Referring Expression', y='Proportion of "Fox News" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_wrap(~source, scales="free_x") +
+  # facet_grid(~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+```{r}
+CriticalData %>% 
+  # mutate(ageGroup = ifelse(age <= 40, "younger","older")) %>% 
+  # filter(!political %in% c("Independent","Moderate")) %>%  # Uncomment when faceting by political
+  group_by(modifierType,source) %>% 
+  summarize(
+    responseCount = n(),
+    meanProgResponse = mean(progResponse),
+    CI.Low = ci.low(progResponse),
+    CI.High = ci.high(progResponse),
+  ) %>%
+  mutate(YMin = meanProgResponse - CI.Low, YMax = meanProgResponse + CI.High) %>% 
+  # select(c("refExp","meanConResponse"))
+  ggplot(aes(x=modifierType,y=meanProgResponse, fill=source)) + 
+  geom_bar(stat = "identity") + 
+  geom_errorbar(aes(ymin=YMin,ymax=YMax), width=.25) +
+  geom_hline(yintercept = 0.33, linetype="dashed", color = "black") + 
+  # coord_flip() + 
+  labs(x='Referring Expression', y='Proportion of "MSNBC" Responses', fill='Gender of Referring Expression') + 
+  theme_bw() + 
+  theme(legend.position="none") + 
+  scale_fill_manual(values=wes_palette("AsteroidCity1")) + 
+  facet_wrap(~source, scales="free_x") +
+  # facet_grid(~ageGroup, scales="free_x") + # Add political to group_by()
+  ylim(0,1)
+```
+
+
+```{r}
+politicalProgs <- CriticalData %>%
+  filter(political == "Progressive") %>% 
+  mutate(ageGroup = ifelse(age <= 30, "younger","older"))
+```
+
+
+```{r}
+brm(conResponse~ageGroup + (1|workerid) + (1|item), data = politicalProgs)
+```
+
+
+```{r}
+CriticalData %>% 
+  select(c("workerid","political","politicalTernary")) %>% 
+  group_by(workerid,political,politicalTernary) %>% 
+  unique() %>% 
+  group_by(political,politicalTernary) %>% 
+  summarize(
+    count=n()
+  )
+```
+
+
+```{r}
+summary(data)
+```
+
+
+
+
 
